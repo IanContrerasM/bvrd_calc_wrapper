@@ -1,0 +1,26 @@
+[project]
+name = "bvrd-calc-wrapper"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "IanContrerasM", email = "ic@quantech.com.do" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "loguru>=0.7.3",
+    "pandas>=2.2.3",
+    "requests>=2.32.3",
+]
+
+[project.scripts]
+bvrd-calc-wrapper = "bvrd_calc_wrapper:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "ipykernel>=6.29.5",
+]
