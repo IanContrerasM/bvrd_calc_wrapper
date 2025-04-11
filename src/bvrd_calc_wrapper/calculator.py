@@ -7,6 +7,7 @@ if typing.TYPE_CHECKING:
     from loguru import Logger
 import pandas as pd
 
+
 class BVRDCalculator:
     """
     Wrapper class for BVRD calculator API that provides simplified methods for
@@ -104,18 +105,23 @@ class BondCalculator(BVRDCalculator):
         cashflows = []
 
         for item in response:
-            titulo_calculo = item.get("titulo_calculo", {})
-            flujos_titulo = item.get("flujos_titulo", [])
-
-            valuations.append(titulo_calculo)
-
-            for flujo in flujos_titulo:
-                # Add ISIN or identifier to cashflows for traceability if needed
-                flujo["codisin"] = titulo_calculo.get("codisin")
-                cashflows.append(flujo)
+            # Si existe la llave 'titulo_calculo', estamos en el escenario con cashflow.
+            if "titulo_calculo" in item:
+                titulo_calculo = item.get("titulo_calculo", {})
+                valuations.append(titulo_calculo)
+                flujos_titulo = item.get("flujos_titulo", [])
+                # Si hay flujos, se procesan y se asocia el ISIN para trazabilidad.
+                if flujos_titulo:
+                    for flujo in flujos_titulo:
+                        flujo["codisin"] = titulo_calculo.get("codisin")
+                        cashflows.append(flujo)
+            else:
+                # Caso sin cashflow: la respuesta contiene directamente los datos de valoración.
+                valuations.append(item)
 
         valuation_df = pd.DataFrame(valuations)
-        cashflows_df = pd.DataFrame(cashflows)
+        # Si no hay cashflows, se retorna un DataFrame vacío para esa parte.
+        cashflows_df = pd.DataFrame(cashflows) if cashflows else pd.DataFrame()
 
         return valuation_df, cashflows_df
 
@@ -157,25 +163,28 @@ class SBBCalculator(BVRDCalculator):
         cesion_cupon: bool = True,
         base_dias: int = 360,
     ) -> List[Dict]:
-        df = pd.DataFrame({
-            "titulo_id": isin,
-            "tipo_insumo": input_type,
-            "tipo_monto": amount_type,
-            "insumo": input,
-            "monto": amount,
-            "fecha_liquidacion_spot": date,
-            "dias": days,
-            "cesion_cupon": cesion_cupon,
-            "base_dias": base_dias,
-        })
+        df = pd.DataFrame(
+            {
+                "titulo_id": isin,
+                "tipo_insumo": input_type,
+                "tipo_monto": amount_type,
+                "insumo": input,
+                "monto": amount,
+                "fecha_liquidacion_spot": date,
+                "dias": days,
+                "cesion_cupon": cesion_cupon,
+                "base_dias": base_dias,
+            }
+        )
 
         # Calculate "tasa" column using the formula provided
-        df["tasa"] = ((df["insumo"] - df["monto"]) / df["monto"]) * (base_dias / df["dias"])
+        df["tasa"] = ((df["insumo"] - df["monto"]) / df["monto"]) * (
+            base_dias / df["dias"]
+        )
 
         return df.to_dict(orient="records")
 
     def _unpack_response(self, response: Dict) -> pd.DataFrame:
-
         return pd.DataFrame(response)
 
     def NPV(
@@ -191,10 +200,16 @@ class SBBCalculator(BVRDCalculator):
         base_dias: int = 360,
     ) -> pd.DataFrame:
         calc_body = self._make_calc_body(
-            isin, input_type, amount_type, input, amount, date, days, cesion_cupon, base_dias
+            isin,
+            input_type,
+            amount_type,
+            input,
+            amount,
+            date,
+            days,
+            cesion_cupon,
+            base_dias,
         )
-        request_body = self._make_request_body(
-            calc_body, config={}
-        )
+        request_body = self._make_request_body(calc_body, config={})
         response = self._call_api("/apicbbvrd_estructurado", request_body)
         return self._unpack_response(response)
