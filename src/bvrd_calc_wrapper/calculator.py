@@ -145,6 +145,18 @@ class BondCalculator(BVRDCalculator):
         valuation, cashflows = self._unpack_response(response)
         return valuation, cashflows
 
+    def current_yield(self, valuation_df) -> pd.DataFrame:
+        return valuation_df["cupon"] / valuation_df["precio_sucio"]
+
+    def dollar_duration(self, valuation_df) -> pd.DataFrame:
+        return valuation_df["precio_limpio"] * valuation_df["modified_duration"]
+
+    def dollar_convexity(self, valuation_df) -> pd.DataFrame:
+        return valuation_df["precio_limpio"] * valuation_df["convexidad"]
+
+    def duration_to_convexity(self, valuation_df) -> pd.DataFrame:
+        return valuation_df["modified_duration"] / valuation_df["convexidad"]
+
 
 class SBBCalculator(BVRDCalculator):
     """
