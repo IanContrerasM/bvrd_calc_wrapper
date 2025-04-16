@@ -5,6 +5,8 @@ import requests
 
 if typing.TYPE_CHECKING:
     from loguru import Logger
+import math
+
 import pandas as pd
 
 
@@ -15,6 +17,7 @@ class BVRDCalculator:
     """
 
     BASE_URL = "https://calculadora.testinnex.exchange"
+    MAX_ROWS_PER_REQUEST = 25_000
 
     def __init__(self, username: str, password: str, logger: "Logger") -> None:
         """
@@ -89,7 +92,7 @@ class BondCalculator(BVRDCalculator):
                 "fecha_liquidacion": date,
             }
         )
-        return df.to_dict(orient="records")
+        return df
 
     def _unpack_response(self, response: Dict):
         """
@@ -135,15 +138,54 @@ class BondCalculator(BVRDCalculator):
         date: pd.Series,
         with_cashflow: bool = False,
     ):
-        calc_body = self._make_calc_body(
-            isin, input_type, amount_type, input, amount, date
+        df = self._make_calc_body(isin, input_type, amount_type, input, amount, date)
+        total_rows = len(df)
+
+        if total_rows == 0:
+            self.logger.warning("Empty input for NPV calculation.")
+            return pd.DataFrame(), pd.DataFrame()
+
+        self.logger.info(
+            f"Processing {total_rows} rows in chunks of {self.MAX_ROWS_PER_REQUEST}"
         )
-        request_body = self._make_request_body(
-            calc_body, config={"with_flujos": with_cashflow}
+
+        valuation_chunks = []
+        cashflow_chunks = []
+
+        num_chunks = math.ceil(total_rows / self.MAX_ROWS_PER_REQUEST)
+
+        for i in range(num_chunks):
+            start = i * self.MAX_ROWS_PER_REQUEST
+            end = start + self.MAX_ROWS_PER_REQUEST
+            chunk_df = df.iloc[start:end]
+
+            request_body = self._make_request_body(
+                chunk_df.to_dict(orient="records"),
+                config={"with_flujos": with_cashflow},
+            )
+
+            self.logger.debug(
+                f"Sending chunk {i + 1}/{num_chunks} with {len(chunk_df)} rows"
+            )
+
+            try:
+                response = self._call_api("/apicbbvrd", request_body)
+                valuation, cashflows = self._unpack_response(response)
+                valuation_chunks.append(valuation)
+                if not cashflows.empty:
+                    cashflow_chunks.append(cashflows)
+            except Exception as e:
+                self.logger.error(f"Chunk {i + 1} failed: {str(e)}")
+                raise
+
+        final_valuation_df = pd.concat(valuation_chunks, ignore_index=True)
+        final_cashflows_df = (
+            pd.concat(cashflow_chunks, ignore_index=True)
+            if cashflow_chunks
+            else pd.DataFrame()
         )
-        response = self._call_api("/apicbbvrd", request_body)
-        valuation, cashflows = self._unpack_response(response)
-        return valuation, cashflows
+
+        return final_valuation_df, final_cashflows_df
 
     def current_yield(self, valuation_df) -> pd.DataFrame:
         return valuation_df["cupon"] / valuation_df["precio_sucio"]
