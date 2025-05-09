@@ -7,6 +7,7 @@ if typing.TYPE_CHECKING:
     from loguru import Logger
 import math
 
+import numpy as np
 import pandas as pd
 
 
@@ -194,7 +195,7 @@ class BondCalculator(BVRDCalculator):
         return final_valuation_df, final_cashflows_df
 
     def current_yield(self, valuation_df) -> pd.DataFrame:
-        return valuation_df["cupon"] / valuation_df["precio_sucio"]
+        return valuation_df["cupon"] / valuation_df["precio_sucio"].replace(0, np.nan)
 
     def dollar_duration(self, valuation_df) -> pd.DataFrame:
         return valuation_df["precio_limpio"] * valuation_df["modified_duration"]
@@ -203,7 +204,9 @@ class BondCalculator(BVRDCalculator):
         return valuation_df["precio_limpio"] * valuation_df["convexidad"]
 
     def duration_to_convexity(self, valuation_df) -> pd.DataFrame:
-        return valuation_df["modified_duration"] / valuation_df["convexidad"]
+        return valuation_df["modified_duration"] / valuation_df["convexidad"].replace(
+            0, np.nan
+        )
 
     def add_coupon_rate(self, valuation_df, cashflows_df):
         """
