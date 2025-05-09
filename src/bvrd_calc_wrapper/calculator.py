@@ -17,7 +17,7 @@ class BVRDCalculator:
     """
 
     BASE_URL = "https://calculadora.testinnex.exchange"
-    MAX_ROWS_PER_REQUEST = 25_000
+    MAX_ROWS_PER_REQUEST = 20_000
 
     def __init__(self, username: str, password: str, logger: "Logger") -> None:
         """
@@ -218,10 +218,10 @@ class BondCalculator(BVRDCalculator):
         """
         # Perform the merge
         merged_df = valuation_df.merge(
-            cashflows_df[["id_calculo", "fecha_flujo", "tasa_interes"]],
+            cashflows_df[["id_calculo", "fecha_flujo_str", "tasa_interes"]],
             how="left",
-            left_on=["id_calculo", "fecha_liquidacion"],
-            right_on=["id_calculo", "fecha_flujo"],
+            left_on=["id_calculo", "fecha_liquidacion_str"],
+            right_on=["id_calculo", "fecha_flujo_str"],
         )
         return merged_df
 
