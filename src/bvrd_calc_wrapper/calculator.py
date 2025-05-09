@@ -119,7 +119,7 @@ class BondCalculator(BVRDCalculator):
                 # Si hay flujos, se procesan y se asocia el ISIN para trazabilidad.
                 if flujos_titulo:
                     for flujo in flujos_titulo:
-                        flujo["codisin"] = titulo_calculo.get("codisin")
+                        flujo["id_calculo"] = titulo_calculo.get("id_calculo")
                         cashflows.append(flujo)
             else:
                 # Caso sin cashflow: la respuesta contiene directamente los datos de valoración.
@@ -204,6 +204,28 @@ class BondCalculator(BVRDCalculator):
 
     def duration_to_convexity(self, valuation_df) -> pd.DataFrame:
         return valuation_df["modified_duration"] / valuation_df["convexidad"]
+
+    def add_coupon_rate(self, valuation_df, cashflows_df):
+        """
+        Adds the 'tasa_interes' column to valuation_df by merging it with cashflows_df.
+
+        Parameters:
+            valuation_df (pd.DataFrame): The valuation DataFrame.
+            cashflows_df (pd.DataFrame): The cashflows DataFrame.
+
+        Returns:
+            pd.DataFrame: The updated valuation_df with the 'tasa_interes' column.
+        """
+        # Perform the merge
+        merged_df = valuation_df.merge(
+            cashflows_df[["id_calculo", "fecha_flujo", "tasa_interes"]],
+            how="left",
+            left_on=["id_calculo", "fecha_liquidacion"],
+            right_on=["id_calculo", "fecha_flujo"],
+        )
+
+        valuation_df["coupon"] = merged_df["tasa_interes"]
+        return valuation_df
 
 
 class SBBCalculator(BVRDCalculator):
