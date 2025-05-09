@@ -223,9 +223,7 @@ class BondCalculator(BVRDCalculator):
             left_on=["id_calculo", "fecha_liquidacion"],
             right_on=["id_calculo", "fecha_flujo"],
         )
-
-        valuation_df["coupon"] = merged_df["tasa_interes"]
-        return valuation_df
+        return merged_df
 
 
 class SBBCalculator(BVRDCalculator):
