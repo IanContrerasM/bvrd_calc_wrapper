@@ -98,30 +98,35 @@ class BondCalculator(BVRDCalculator):
         return pd.DataFrame(data)
 
     def _unpack_response(self, response: Dict):
+        """
+        Unpack API response into two DataFrames: valuation and cashflows.
+
+        Args:
+            response: API response as a dictionary.
+
+        Returns:
+            A tuple of (valuation_df, cashflows_df)
+        """
         valuations = []
         cashflows = []
 
         for item in response:
+            # Si existe la llave 'titulo_calculo', estamos en el escenario con cashflow.
             if "titulo_calculo" in item:
                 titulo_calculo = item.get("titulo_calculo", {})
-                flujos_titulo = item.get("flujos_titulo", [])
-
-                fecha_liq = titulo_calculo.get("fecha_liquidacion_str")
-                if fecha_liq and flujos_titulo:
-                    for flujo in flujos_titulo:
-                        if flujo.get("fecha_flujo_str") == fecha_liq:
-                            titulo_calculo["tasa_interes"] = flujo.get("tasa_interes")
-                            break
-
                 valuations.append(titulo_calculo)
-
-                for flujo in flujos_titulo:
-                    flujo["codisin"] = titulo_calculo.get("codisin")
-                    cashflows.append(flujo)
+                flujos_titulo = item.get("flujos_titulo", [])
+                # Si hay flujos, se procesan y se asocia el ISIN para trazabilidad.
+                if flujos_titulo:
+                    for flujo in flujos_titulo:
+                        flujo["codisin"] = titulo_calculo.get("codisin")
+                        cashflows.append(flujo)
             else:
+                # Caso sin cashflow: la respuesta contiene directamente los datos de valoración.
                 valuations.append(item)
 
         valuation_df = pd.DataFrame(valuations)
+        # Si no hay cashflows, se retorna un DataFrame vacío para esa parte.
         cashflows_df = pd.DataFrame(cashflows) if cashflows else pd.DataFrame()
 
         return valuation_df, cashflows_df
@@ -134,7 +139,7 @@ class BondCalculator(BVRDCalculator):
         input: pd.Series | float,
         amount: pd.Series | float,
         date: pd.Series,
-        id_calculo: pd.Series | int | None = None,
+        id_calculo: pd.Series | int,
         with_cashflow: bool = False,
     ):
         df = self._make_calc_body(
@@ -231,7 +236,6 @@ class SBBCalculator(BVRDCalculator):
 
         if id_calculo is not None:
             data["id_calculo"] = id_calculo
-            data["calculo_id"] = id_calculo
 
         return pd.DataFrame(data)
 
