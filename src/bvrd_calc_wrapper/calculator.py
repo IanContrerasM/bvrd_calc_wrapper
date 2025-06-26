@@ -18,9 +18,11 @@ class BVRDCalculator:
     """
 
     BASE_URL = "https://calculadora.testinnex.exchange"
-    MAX_ROWS_PER_REQUEST = 20_000
+    MAX_ROWS_PER_REQUEST = 5000
 
-    def __init__(self, username: str, password: str, logger: "Logger") -> None:
+    def __init__(
+        self, username: str, password: str, logger: "Logger", MAX_ROWS_PER_REQUEST=5000
+    ) -> None:
         """
         Initialize the BVRD calculator client.
 
@@ -31,6 +33,7 @@ class BVRDCalculator:
         self.username = username
         self.password = password
         self.logger = logger
+        self.MAX_ROWS_PER_REQUEST = MAX_ROWS_PER_REQUEST
 
     def _call_api(self, endpoint: str, payload: Dict) -> Dict:
         """
