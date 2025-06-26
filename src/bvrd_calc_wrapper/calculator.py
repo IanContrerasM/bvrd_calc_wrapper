@@ -237,8 +237,6 @@ class SBBCalculator(BVRDCalculator):
     Calculator for Structured Bond Valuation using the updated BVRD API payload.
     """
 
-    MAX_ROWS_PER_REQUEST = 100  # Set as needed
-
     def _make_calc_body(
         self,
         titulo_id: pd.Series | str,
